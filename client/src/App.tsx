@@ -5,12 +5,17 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-
+import CMV from "./pages/CMV";
+import EstoqueAvancado from "./pages/EstoqueAvancado";
+import FinanceiroCompleto from "./pages/FinanceiroCompleto";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/cmv"} component={CMV} />
+      <Route path={"/estoque-avancado"} component={EstoqueAvancado} />
+      <Route path={"/financeiro-completo"} component={FinanceiroCompleto} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -27,7 +32,7 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider
-        defaultTheme="light"
+        defaultTheme="dark"
         // switchable
       >
         <TooltipProvider>
