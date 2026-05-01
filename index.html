@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Vinicola - Sistema de Gestão</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #c8a97e;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        button {
+            background: #c8a97e;
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #d4b896;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .sidebar {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 200px;
+        }
+        
+        .nav-item {
+            padding: 12px 16px;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 4px;
+        }
+        
+        .nav-item:hover {
+            background: #2a2a2a;
+            border-left-color: #c8a97e;
+        }
+        
+        .nav-item.active {
+            background: #2a2a2a;
+            border-left-color: #c8a97e;
+            color: #c8a97e;
+        }
+        
+        .content {
+            flex: 1;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .card h3 {
+            color: #c8a97e;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .card .value {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .card .label {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .table-container {
+            background: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #333;
+            overflow: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #1a1a1a;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #c8a97e;
+            border-bottom: 1px solid #333;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #333;
+        }
+        
+        tr:hover {
+            background: #333;
+        }
+        
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #1a1a1a;
+        }
+        
+        .login-form {
+            background: #2a2a2a;
+            padding: 40px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-form h1 {
+            color: #c8a97e;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #c8a97e;
+        }
+        
+        .form-group button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+        }
+        
+        .error {
+            color: #ff6b6b;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #3a2a2a;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .success {
+            color: #4ade80;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #2a3a2a;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .main-layout {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+        }
+        
+        .modal-header h2 {
+            color: #c8a97e;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: auto;
+        }
+        
+        .close-btn:hover {
+            color: #c8a97e;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+        
+        .item-list {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .item-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+        
+        .item-row input {
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+        }
+        
+        .remove-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .remove-btn:hover {
+            background: #ff5252;
+        }
+        
+        .add-item-btn {
+            background: #4ade80;
+            color: #1a1a1a;
+            margin-bottom: 15px;
+        }
+        
+        .add-item-btn:hover {
+            background: #22c55e;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+        
+        .modal-footer button {
+            padding: 10px 20px;
+        }
+        
+        .cancel-btn {
+            background: #666;
+        }
+        
+        .cancel-btn:hover {
+            background: #777;
+        }
+        
+        .total-section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: right;
+        }
+        
+        .total-section .label {
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .total-section .value {
+            font-size: 24px;
+            color: #c8a97e;
+            font-weight: bold;
+        }
+        
+        .status-entregue {
+            color: #4ade80;
+        }
+        
+        .status-pendente {
+            color: #fbbf24;
+        }
+        
+        .status-processando {
+            color: #60a5fa;
+        }
+        
+        .status-rascunho {
+            color: #999;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                flex-direction: column;
+            }
+            
+            .main-layout {
+                flex-direction: column;
+            }
+            
+            .nav-menu {
+                width: 100%;
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .item-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login -->
+    <div id="login-screen" class="login-container">
+        <form class="login-form" onsubmit="handleLogin(event)">
+            <h1>La Vinicola</h1>
+            <h2 style="color: #999; text-align: center; font-size: 16px; margin-bottom: 30px;">Sistema de Gestão</h2>
+            
+            <div class="error" id="error-msg"></div>
+            
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" value="lourdes@lavinicola.com.br" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" value="Lourdes@2026" required>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit">Entrar</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Dashboard -->
+    <div id="dashboard-screen" class="hidden">
+        <div class="container">
+            <header>
+                <div class="logo">LA|VINICOLA</div>
+                <div class="user-info">
+                    <span id="user-name">Lourdes</span>
+                    <button onclick="handleLogout()">Sair</button>
+                </div>
+            </header>
+            
+            <div class="main-layout">
+                <div class="nav-menu">
+                    <div class="nav-item active" onclick="showModule('dashboard')">Dashboard</div>
+                    <div class="nav-item" onclick="showModule('cmv')">CMV</div>
+                    <div class="nav-item" onclick="showModule('estoque')">Estoque</div>
+                    <div class="nav-item" onclick="showModule('financeiro')">Financeiro</div>
+                    <div class="nav-item" onclick="showModule('compras')">Compras</div>
+                    <div class="nav-item" onclick="showModule('caixa')">Caixa/PDV</div>
+                </div>
+                
+                <div class="content">
+                    <!-- Dashboard Module -->
+                    <div id="module-dashboard" class="module">
+                        <h2 style="margin-bottom: 20px; color: #c8a97e;">Dashboard</h2>
+                        <div class="dashboard">
+                            <div class="card">
+                                <h3>Faturamento</h3>
+                                <div class="value">R$ 15.000</div>
+                                <div class="label">Mês atual</div>
+                            </div>
+                            <div class="card">
+                                <h3>Lucro Líquido</h3>
+                                <div class="value">R$ 5.000</div>
+                                <div class="label">Mês atual</div>
+                            </div>
+                            <div class="card">
+                                <h3>CMV Total</h3>
+                                <div class="value">R$ 7.500</div>
+                                <div class="label">Mês atual</div>
+                            </div>
+                            <div class="card">
+                                <h3>Margem de Lucro</h3>
+                                <div class="value">33.3%</div>
+                                <div class="label">Mês atual</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CMV Module -->
+                    <div id="module-cmv" class="module hidden">
+                        <h2 style="margin-bottom: 20px; color: #c8a97e;">Custo da Mercadoria Vendida (CMV)</h2>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Mês</th>
+                                        <th>EI</th>
+                                        <th>Compras</th>
+                                        <th>EF</th>
+                                        <th>Custo Total</th>
+                                        <th>Faturamento</th>
+                                        <th>%</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cmv-tbody">
+                                    <tr><td colspan="7" style="text-align: center; color: #999;">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Estoque Module -->
+                    <div id="module-estoque" class="module hidden">
+                        <h2 style="margin-bottom: 20px; color: #c8a97e;">Estoque Avançado</h2>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Produto</th>
+                                        <th>Categoria</th>
+                                        <th>Estoque</th>
+                                        <th>Mínimo</th>
+                                        <th>Custo</th>
+                                        <th>Preço</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="estoque-tbody">
+                                    <tr><td colspan="7" style="text-align: center; color: #999;">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Financeiro Module -->
+                    <div id="module-financeiro" class="module hidden">
+                        <h2 style="margin-bottom: 20px; color: #c8a97e;">Gestão Financeira</h2>
+                        <div class="dashboard">
+                            <div class="card">
+                                <h3>Receitas</h3>
+                                <div class="value">R$ 50.000</div>
+                                <div class="label">Mês atual</div>
+                            </div>
+                            <div class="card">
+                                <h3>Despesas</h3>
+                                <div class="value">R$ 20.000</div>
+                                <div class="label">Mês atual</div>
+                            </div>
+                            <div class="card">
+                                <h3>Contas a Pagar</h3>
+                                <div class="value">R$ 8.000</div>
+                                <div class="label">Próximos 30 dias</div>
+                            </div>
+                            <div class="card">
+                                <h3>Contas a Receber</h3>
+                                <div class="value">R$ 20.000</div>
+                                <div class="label">Próximos 30 dias</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Compras Module -->
+                    <div id="module-compras" class="module hidden">
+                        <h2 style="margin-bottom: 20px; color: #c8a97e;">Compras</h2>
+                        <button onclick="abrirModalNovoPedido()" style="margin-bottom: 20px;">+ Novo Pedido</button>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Nº Pedido</th>
+                                        <th>Fornecedor</th>
+                                        <th>Data</th>
+                                        <th>Total</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                        <th>WhatsApp</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="compras-tbody">
+                                    <tr><td colspan="6" style="text-align: center; color: #999;">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Caixa Module -->
+                    <div id="module-caixa" class="module hidden">
+                        <h2 style="margin-bottom: 20px; color: #c8a97e;">Caixa/PDV</h2>
+                        <div class="dashboard">
+                            <div class="card">
+                                <h3>Saldo em Caixa</h3>
+                                <div class="value">R$ 3.500</div>
+                                <div class="label">Hoje</div>
+                            </div>
+                            <div class="card">
+                                <h3>Vendas Hoje</h3>
+                                <div class="value">R$ 2.800</div>
+                                <div class="label">Total do dia</div>
+                            </div>
+                            <div class="card">
+                                <h3>Transações</h3>
+                                <div class="value">24</div>
+                                <div class="label">Hoje</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Novo Pedido -->
+    <div id="modal-novo-pedido" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Novo Pedido de Compra</h2>
+                <button class="close-btn" onclick="fecharModalNovoPedido()">×</button>
+            </div>
+            
+            <div class="error" id="modal-error"></div>
+            <div class="success" id="modal-success"></div>
+            
+            <form onsubmit="salvarNovoPedido(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fornecedor">Fornecedor *</label>
+                        <select id="fornecedor" required style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #fff;">
+                            <option value="">Selecionar fornecedor...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="data-pedido">Data do Pedido *</label>
+                        <input type="date" id="data-pedido" required style="padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #fff;">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Itens do Pedido *</label>
+                    <div class="item-list" id="item-list">
+                        <div class="item-row">
+                            <input type="text" placeholder="Produto" class="item-produto" required>
+                            <input type="number" placeholder="Qtd" class="item-quantidade" required min="1">
+                            <input type="number" placeholder="Preço Unit." class="item-preco" required min="0.01" step="0.01">
+                            <input type="text" placeholder="Subtotal" class="item-subtotal" readonly>
+                            <button type="button" class="remove-btn" onclick="removerItem(this)">Remover</button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-item-btn" onclick="adicionarItem()">+ Adicionar Item</button>
+                </div>
+                
+                <div class="total-section">
+                    <div class="label">Total do Pedido:</div>
+                    <div class="value" id="total-pedido">R$ 0,00</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="observacoes">Observações</label>
+                    <textarea id="observacoes" style="width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #fff; min-height: 80px;"></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="cancel-btn" onclick="fecharModalNovoPedido()">Cancelar</button>
+                    <button type="submit" style="background: #4ade80; color: #1a1a1a;">Salvar Pedido</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = '/gestao/api';
+        let authToken = null;
+        
+        // ============ Auth Functions ============
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-msg');
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('token', authToken);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('dashboard-screen').classList.remove('hidden');
+                    document.getElementById('user-name').textContent = data.user.name;
+                    
+                    // Carregar dados iniciais
+                    carregarDadosModulos();
+                } else {
+                    errorDiv.textContent = data.error || 'Erro ao fazer login';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Erro de conexão: ' + error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+        
+        function handleLogout() {
+            authToken = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('email').value = 'lourdes@lavinicola.com.br';
+            document.getElementById('password').value = 'Lourdes@2026';
+        }
+        
+        // ============ Module Navigation ============
+        function showModule(moduleName) {
+            document.querySelectorAll('.module').forEach(m => m.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(`module-${moduleName}`).classList.remove('hidden');
+            event.target.classList.add('active');
+        }
+        
+        // ============ Data Loading ============
+        async function carregarDadosModulos() {
+            await carregarCMV();
+            await carregarEstoque();
+            await carregarCompras();
+            await carregarFornecedores();
+        }
+        
+        async function carregarCMV() {
+            try {
+                const response = await fetch(`${API_URL}/cmv/data`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+                
+                const tbody = document.getElementById('cmv-tbody');
+                tbody.innerHTML = '';
+                
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${row.mes}</td>
+                        <td>R$ ${row.ei.toLocaleString('pt-BR')}</td>
+                        <td>R$ ${row.compras.toLocaleString('pt-BR')}</td>
+                        <td>R$ ${row.ef.toLocaleString('pt-BR')}</td>
+                        <td>R$ ${row.custoTotal.toLocaleString('pt-BR')}</td>
+                        <td>R$ ${row.faturamento.toLocaleString('pt-BR')}</td>
+                        <td>${row.percentual.toFixed(2)}%</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar CMV:', error);
+            }
+        }
+        
+        async function carregarEstoque() {
+            try {
+                const response = await fetch(`${API_URL}/estoque/produtos`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+                
+                const tbody = document.getElementById('estoque-tbody');
+                tbody.innerHTML = '';
+                
+                data.forEach(produto => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${produto.codigo}</td>
+                        <td>${produto.nome}</td>
+                        <td>${produto.categoria}</td>
+                        <td>${produto.estoque_atual}</td>
+                        <td>${produto.estoque_minimo}</td>
+                        <td>R$ ${produto.custo_medio.toFixed(2)}</td>
+                        <td>R$ ${produto.preco_venda.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar estoque:', error);
+            }
+        }
+        
+        async function carregarCompras() {
+            try {
+                const response = await fetch(`${API_URL}/compras/pedidos`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+                
+                const tbody = document.getElementById('compras-tbody');
+                tbody.innerHTML = '';
+                
+                data.forEach(pedido => {
+                    const statusClass = `status-${pedido.status.toLowerCase().replace(' ', '-')}`;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${pedido.numero}</td>
+                        <td>${pedido.fornecedor}</td>
+                        <td>${new Date(pedido.data).toLocaleDateString('pt-BR')}</td>
+                        <td>R$ ${pedido.total.toLocaleString('pt-BR')}</td>
+                        <td><span class="${statusClass}">${pedido.status}</span></td>
+                        <td><button onclick="verDetalhes(${pedido.id})" style="padding: 5px 10px; font-size: 12px;">Ver</button></td>
+                        <td><button onclick="enviarWhatsApp(${pedido.id}, '${pedido.numero}', '${pedido.fornecedor}', ${pedido.total})" style="padding: 5px 10px; font-size: 12px; background: #25d366; color: white;">📱 Enviar</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar compras:', error);
+            }
+        }
+        
+        async function carregarFornecedores() {
+            try {
+                const response = await fetch(`${API_URL}/compras/fornecedores`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+                
+                const select = document.getElementById('fornecedor');
+                select.innerHTML = '<option value="">Selecionar fornecedor...</option>';
+                
+                data.forEach(fornecedor => {
+                    const option = document.createElement('option');
+                    option.value = fornecedor.id;
+                    option.textContent = fornecedor.nome;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar fornecedores:', error);
+            }
+        }
+        
+        // ============ Modal Functions ============
+        function abrirModalNovoPedido() {
+            document.getElementById('modal-novo-pedido').classList.add('active');
+            document.getElementById('data-pedido').valueAsDate = new Date();
+        }
+        
+        function fecharModalNovoPedido() {
+            document.getElementById('modal-novo-pedido').classList.remove('active');
+            document.getElementById('modal-error').style.display = 'none';
+            document.getElementById('modal-success').style.display = 'none';
+            document.querySelector('form').reset();
+            
+            // Resetar itens
+            const itemList = document.getElementById('item-list');
+            itemList.innerHTML = `
+                <div class="item-row">
+                    <input type="text" placeholder="Produto" class="item-produto" required>
+                    <input type="number" placeholder="Qtd" class="item-quantidade" required min="1">
+                    <input type="number" placeholder="Preço Unit." class="item-preco" required min="0.01" step="0.01">
+                    <input type="text" placeholder="Subtotal" class="item-subtotal" readonly>
+                    <button type="button" class="remove-btn" onclick="removerItem(this)">Remover</button>
+                </div>
+            `;
+            atualizarTotal();
+        }
+        
+        function adicionarItem() {
+            const itemList = document.getElementById('item-list');
+            const novoItem = document.createElement('div');
+            novoItem.className = 'item-row';
+            novoItem.innerHTML = `
+                <input type="text" placeholder="Produto" class="item-produto" required>
+                <input type="number" placeholder="Qtd" class="item-quantidade" required min="1">
+                <input type="number" placeholder="Preço Unit." class="item-preco" required min="0.01" step="0.01">
+                <input type="text" placeholder="Subtotal" class="item-subtotal" readonly>
+                <button type="button" class="remove-btn" onclick="removerItem(this)">Remover</button>
+            `;
+            
+            // Adicionar listeners para cálculo
+            novoItem.querySelector('.item-quantidade').addEventListener('change', atualizarTotal);
+            novoItem.querySelector('.item-preco').addEventListener('change', atualizarTotal);
+            
+            itemList.appendChild(novoItem);
+        }
+        
+        function removerItem(btn) {
+            btn.parentElement.remove();
+            atualizarTotal();
+        }
+        
+        function atualizarTotal() {
+            let total = 0;
+            const itens = document.querySelectorAll('.item-row');
+            
+            itens.forEach(item => {
+                const qtd = parseFloat(item.querySelector('.item-quantidade').value) || 0;
+                const preco = parseFloat(item.querySelector('.item-preco').value) || 0;
+                const subtotal = qtd * preco;
+                
+                item.querySelector('.item-subtotal').value = `R$ ${subtotal.toFixed(2)}`;
+                total += subtotal;
+            });
+            
+            document.getElementById('total-pedido').textContent = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        }
+        
+        async function salvarNovoPedido(e) {
+            e.preventDefault();
+            
+            const fornecedorId = document.getElementById('fornecedor').value;
+            const itens = [];
+            
+            document.querySelectorAll('.item-row').forEach(item => {
+                itens.push({
+                    produto: item.querySelector('.item-produto').value,
+                    quantidade: parseFloat(item.querySelector('.item-quantidade').value),
+                    preco_unitario: parseFloat(item.querySelector('.item-preco').value)
+                });
+            });
+            
+            if (itens.length === 0) {
+                document.getElementById('modal-error').textContent = 'Adicione pelo menos um item';
+                document.getElementById('modal-error').style.display = 'block';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/compras/pedidos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        fornecedor_id: fornecedorId,
+                        itens: itens,
+                        total: parseFloat(document.getElementById('total-pedido').textContent.replace('R$ ', '').replace(/\./g, '').replace(',', '.'))
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('modal-success').textContent = data.message;
+                    document.getElementById('modal-success').style.display = 'block';
+                    
+                    setTimeout(() => {
+                        fecharModalNovoPedido();
+                        carregarCompras();
+                    }, 1500);
+                } else {
+                    document.getElementById('modal-error').textContent = data.error || 'Erro ao salvar pedido';
+                    document.getElementById('modal-error').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('modal-error').textContent = 'Erro: ' + error.message;
+                document.getElementById('modal-error').style.display = 'block';
+            }
+        }
+        
+        function verDetalhes(id) {
+            alert(`Detalhes do pedido #${id} - Funcionalidade em desenvolvimento`);
+        }
+        
+        function enviarWhatsApp(id, numero, fornecedor, total) {
+            const numeroWhatsApp = '5511987654321';
+            const mensagem = `Olá! 👋\n\nPedido de Compra #${numero}\n\nFornecedor: ${fornecedor}\nTotal: R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}\n\nPor favor, confirmar recebimento e disponibilidade.\n\nObrigado!`;
+            const mensagemCodificada = encodeURIComponent(mensagem);
+            const linkWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${mensagemCodificada}`;
+            window.open(linkWhatsApp, '_blank');
+        }
+        
+        // ============ Initialization ============
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                authToken = token;
+                const user = JSON.parse(localStorage.getItem('user'));
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard-screen').classList.remove('hidden');
+                document.getElementById('user-name').textContent = user.name;
+                carregarDadosModulos();
+            }
+        });
+        
+        // Adicionar listeners para cálculo de subtotais
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('item-quantidade') || e.target.classList.contains('item-preco')) {
+                atualizarTotal();
+            }
+        });
+    </script>
+</body>
+</html>
