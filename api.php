@@ -469,53 +469,234 @@ function getFinanceiro() {
     global $pdo;
     
     try {
-        $stmt = $pdo->query("
+        // Filtros opcionais por período (mês/ano) e por status
+        $mes = isset($_GET['mes']) && is_numeric($_GET['mes']) ? (int)$_GET['mes'] : (int)date('n');
+        $ano = isset($_GET['ano']) && is_numeric($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
+        $statusPagar = isset($_GET['status_pagar']) ? $_GET['status_pagar'] : null;
+        $statusReceber = isset($_GET['status_receber']) ? $_GET['status_receber'] : null;
+
+        // Receitas do período
+        $stmt = $pdo->prepare("
             SELECT COALESCE(SUM(valor), 0) as receitas
             FROM fin_transacoes
-            WHERE tipo = 'receita' AND MONTH(data) = MONTH(NOW())
+            WHERE tipo = 'receita' AND MONTH(data) = ? AND YEAR(data) = ?
         ");
-        $receitas = $stmt->fetch(PDO::FETCH_ASSOC)['receitas'] ?? 50000;
+        $stmt->execute([$mes, $ano]);
+        $receitas = (float)($stmt->fetch(PDO::FETCH_ASSOC)['receitas'] ?? 0);
 
-        $stmt = $pdo->query("
+        // Despesas do período
+        $stmt = $pdo->prepare("
             SELECT COALESCE(SUM(valor), 0) as despesas
             FROM fin_transacoes
-            WHERE tipo = 'despesa' AND MONTH(data) = MONTH(NOW())
+            WHERE tipo = 'despesa' AND MONTH(data) = ? AND YEAR(data) = ?
         ");
-        $despesas = $stmt->fetch(PDO::FETCH_ASSOC)['despesas'] ?? 20000;
+        $stmt->execute([$mes, $ano]);
+        $despesas = (float)($stmt->fetch(PDO::FETCH_ASSOC)['despesas'] ?? 0);
+
+        // CMV REAL - integração com est_cmv_historico (em vez de receitas * 0.35)
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(estoque_inicial + compras - estoque_final), 0) as cmv_real
+            FROM est_cmv_historico
+            WHERE MONTH(data) = ? AND YEAR(data) = ?
+        ");
+        $stmt->execute([$mes, $ano]);
+        $cmv_real = (float)($stmt->fetch(PDO::FETCH_ASSOC)['cmv_real'] ?? 0);
+        // Fallback se não houver dados de CMV: usa estimativa de 35%
+        $cmv = $cmv_real > 0 ? $cmv_real : ($receitas * 0.35);
+
+        // Despesas Operacionais REAIS - excluindo CMV (categoria 'operacional')
+        // Tenta buscar por categoria; se não existir coluna, usa estimativa
+        $despesasOp = 0;
+        try {
+            $stmt = $pdo->prepare("
+                SELECT COALESCE(SUM(valor), 0) as opex
+                FROM fin_transacoes
+                WHERE tipo = 'despesa'
+                  AND categoria = 'operacional'
+                  AND MONTH(data) = ? AND YEAR(data) = ?
+            ");
+            $stmt->execute([$mes, $ano]);
+            $despesasOp = (float)($stmt->fetch(PDO::FETCH_ASSOC)['opex'] ?? 0);
+        } catch (Exception $e) {
+            // Coluna 'categoria' não existe - usa estimativa
+            $despesasOp = 0;
+        }
+        if ($despesasOp <= 0) {
+            // Fallback: total de despesas que não sejam de fornecedor (CMV)
+            $despesasOp = $despesas * 0.6;
+        }
+
+        // Lucro Bruto e Resultado Líquido com base nos cálculos reais
+        $lucroBruto = $receitas - $cmv;
+        $resultado = $lucroBruto - $despesasOp;
+
+        // Histórico mensal de DRE (últimos 6 meses)
+        $historico = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $dataRef = date('Y-m-01', strtotime("first day of -$i months"));
+            $mesRef = (int)date('n', strtotime($dataRef));
+            $anoRef = (int)date('Y', strtotime($dataRef));
+            $rotulo = strftime_pt(date('M/Y', strtotime($dataRef)));
+
+            $stmt = $pdo->prepare("
+                SELECT 
+                    COALESCE(SUM(CASE WHEN tipo='receita' THEN valor ELSE 0 END), 0) as receitas,
+                    COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor ELSE 0 END), 0) as despesas
+                FROM fin_transacoes
+                WHERE MONTH(data) = ? AND YEAR(data) = ?
+            ");
+            $stmt->execute([$mesRef, $anoRef]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $stmt2 = $pdo->prepare("
+                SELECT COALESCE(SUM(estoque_inicial + compras - estoque_final), 0) as cmv
+                FROM est_cmv_historico
+                WHERE MONTH(data) = ? AND YEAR(data) = ?
+            ");
+            $stmt2->execute([$mesRef, $anoRef]);
+            $cmvRow = $stmt2->fetch(PDO::FETCH_ASSOC);
+
+            $rec = (float)$row['receitas'];
+            $des = (float)$row['despesas'];
+            $cmvHist = (float)$cmvRow['cmv'];
+            if ($cmvHist <= 0) $cmvHist = $rec * 0.35;
+
+            $historico[] = [
+                'mes' => $rotulo,
+                'receitas' => $rec,
+                'despesas' => $des,
+                'cmv' => $cmvHist,
+                'resultado' => $rec - $des
+            ];
+        }
+
+        // Saldo inicial: soma de receitas - despesas até o último dia do mês anterior
+        $stmt = $pdo->prepare("
+            SELECT 
+                COALESCE(SUM(CASE WHEN tipo='receita' THEN valor ELSE -valor END), 0) as saldo_acumulado
+            FROM fin_transacoes
+            WHERE data < ?
+        ");
+        $primeiroDiaMes = sprintf('%04d-%02d-01', $ano, $mes);
+        $stmt->execute([$primeiroDiaMes]);
+        $saldoInicial = (float)($stmt->fetch(PDO::FETCH_ASSOC)['saldo_acumulado'] ?? 0);
+
+        // Projeção de fluxo de caixa: próximos 30 dias com base em contas a pagar/receber
+        $stmt = $pdo->query("
+            SELECT COALESCE(SUM(valor), 0) as total
+            FROM fin_contas_receber
+            WHERE data_vencimento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+              AND status IN ('pendente', 'previsto')
+        ");
+        $entradasProj = (float)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
         $stmt = $pdo->query("
-            SELECT * FROM fin_contas_pagar
-            WHERE data_vencimento >= CURDATE()
-            ORDER BY data_vencimento
+            SELECT COALESCE(SUM(valor), 0) as total
+            FROM fin_contas_pagar
+            WHERE data_vencimento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+              AND status IN ('pendente', 'previsto')
         ");
+        $saidasProj = (float)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+
+        // Se não houver projeção das contas, usa receitas/despesas correntes como base
+        if ($entradasProj <= 0) $entradasProj = $receitas;
+        if ($saidasProj <= 0) $saidasProj = $despesas;
+
+        // Projeção semana a semana (próximas 4 semanas)
+        $projecaoSemanal = [];
+        for ($i = 0; $i < 4; $i++) {
+            $inicio = date('Y-m-d', strtotime("+" . ($i * 7) . " days"));
+            $fim = date('Y-m-d', strtotime("+" . (($i + 1) * 7 - 1) . " days"));
+
+            $stmt = $pdo->prepare("
+                SELECT COALESCE(SUM(valor), 0) as total
+                FROM fin_contas_receber
+                WHERE data_vencimento BETWEEN ? AND ?
+                  AND status IN ('pendente', 'previsto')
+            ");
+            $stmt->execute([$inicio, $fim]);
+            $entSem = (float)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+
+            $stmt = $pdo->prepare("
+                SELECT COALESCE(SUM(valor), 0) as total
+                FROM fin_contas_pagar
+                WHERE data_vencimento BETWEEN ? AND ?
+                  AND status IN ('pendente', 'previsto')
+            ");
+            $stmt->execute([$inicio, $fim]);
+            $saiSem = (float)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
+
+            $projecaoSemanal[] = [
+                'semana' => 'Semana ' . ($i + 1),
+                'inicio' => $inicio,
+                'fim' => $fim,
+                'entradas' => $entSem,
+                'saidas' => $saiSem,
+                'liquido' => $entSem - $saiSem
+            ];
+        }
+
+        // Contas a pagar com filtro opcional por status
+        if ($statusPagar) {
+            $stmt = $pdo->prepare("
+                SELECT * FROM fin_contas_pagar
+                WHERE status = ?
+                ORDER BY data_vencimento
+            ");
+            $stmt->execute([$statusPagar]);
+        } else {
+            $stmt = $pdo->query("
+                SELECT * FROM fin_contas_pagar
+                ORDER BY data_vencimento
+            ");
+        }
         $contas_pagar = $stmt->fetchAll(PDO::FETCH_ASSOC) ?? [];
 
-        $stmt = $pdo->query("
-            SELECT * FROM fin_contas_receber
-            WHERE data_vencimento >= CURDATE()
-            ORDER BY data_vencimento
-        ");
+        // Contas a receber com filtro opcional por status
+        if ($statusReceber) {
+            $stmt = $pdo->prepare("
+                SELECT * FROM fin_contas_receber
+                WHERE status = ?
+                ORDER BY data_vencimento
+            ");
+            $stmt->execute([$statusReceber]);
+        } else {
+            $stmt = $pdo->query("
+                SELECT * FROM fin_contas_receber
+                ORDER BY data_vencimento
+            ");
+        }
         $contas_receber = $stmt->fetchAll(PDO::FETCH_ASSOC) ?? [];
 
+        // Totalizadores
+        $totalPagar = array_sum(array_map(function($c) { return (float)($c['valor'] ?? 0); }, $contas_pagar));
+        $totalReceber = array_sum(array_map(function($c) { return (float)($c['valor'] ?? 0); }, $contas_receber));
+
         $data = [
+            'periodo' => ['mes' => $mes, 'ano' => $ano],
             'dre' => [
                 'receitas' => $receitas,
                 'despesas' => $despesas,
-                'cmv' => $receitas * 0.35,
-                'despesasOp' => $despesas * 0.6,
-                'resultado' => $receitas - $despesas,
-                'historico' => []
+                'cmv' => $cmv,
+                'cmv_real' => $cmv_real,
+                'despesasOp' => $despesasOp,
+                'lucroBruto' => $lucroBruto,
+                'resultado' => $resultado,
+                'margem' => $receitas > 0 ? round(($resultado / $receitas) * 100, 2) : 0,
+                'historico' => $historico
             ],
             'fluxoCaixa' => [
-                'saldoInicial' => 0,
-                'entradasProjetadas' => $receitas,
-                'saidasProjetadas' => $despesas,
-                'saldoFinal' => $receitas - $despesas,
-                'projecao' => []
+                'saldoInicial' => $saldoInicial,
+                'entradasProjetadas' => $entradasProj,
+                'saidasProjetadas' => $saidasProj,
+                'saldoFinal' => $saldoInicial + $entradasProj - $saidasProj,
+                'projecao' => $projecaoSemanal
             ],
             'contas' => [
                 'pagar' => $contas_pagar,
-                'receber' => $contas_receber
+                'receber' => $contas_receber,
+                'total_pagar' => $totalPagar,
+                'total_receber' => $totalReceber
             ]
         ];
 
@@ -524,6 +705,16 @@ function getFinanceiro() {
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);
     }
+}
+
+// Helper para nomes de meses em PT-BR
+function strftime_pt($enLabel) {
+    $map = [
+        'Jan' => 'Jan', 'Feb' => 'Fev', 'Mar' => 'Mar', 'Apr' => 'Abr',
+        'May' => 'Mai', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ago',
+        'Sep' => 'Set', 'Oct' => 'Out', 'Nov' => 'Nov', 'Dec' => 'Dez'
+    ];
+    return strtr($enLabel, $map);
 }
 
 // ============ Compras Functions ============

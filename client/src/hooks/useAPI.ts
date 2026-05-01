@@ -8,6 +8,7 @@ interface UseAPIOptions {
   action: string;
   method?: 'GET' | 'POST';
   data?: Record<string, any>;
+  params?: Record<string, string | number | undefined | null>;
   skip?: boolean;
 }
 
@@ -26,6 +27,7 @@ export function useAPI<T = any>({
   action,
   method = 'GET',
   data,
+  params,
   skip = false,
 }: UseAPIOptions): UseAPIResult<T> {
   const [result, setResult] = useState<T | null>(null);
@@ -52,7 +54,14 @@ export function useAPI<T = any>({
         },
       };
 
-      const url = `${API_BASE_URL}?action=${action}`;
+      let url = `${API_BASE_URL}?action=${action}`;
+      if (params) {
+        const extra = Object.entries(params)
+          .filter(([, v]) => v !== undefined && v !== null && v !== '')
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+          .join('&');
+        if (extra) url += `&${extra}`;
+      }
       let response;
 
       if (method === 'POST') {
@@ -78,7 +87,8 @@ export function useAPI<T = any>({
 
   useEffect(() => {
     fetchData();
-  }, [action, skip]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [action, skip, JSON.stringify(params)]);
 
   return {
     data: result,
